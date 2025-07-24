@@ -165,7 +165,7 @@ function App() {
             }}
         >
             <header className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col sm:flex-row justify-between items-center">
-                <h1 className="text-4xl font-extrabold text-gray-800 mb-4 sm:mb-0">Telehealth Patient Portal</h1>
+                <h1 className="text-4xl font-extrabold text-gray-800 mb-4 sm:mb-0">FHIR Patient Portal</h1>
                 <div className="flex space-x-4"> {/* Container for navigation and logout buttons */}
                     <button
                         onClick={() => setCurrentView('list')}
