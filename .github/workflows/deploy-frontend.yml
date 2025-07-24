@@ -18,11 +18,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20' # Use Node.js version 20 (or compatible with your React app)
-
-    # ADD THIS BLOCK:
-    - name: Set npm bin path
-      run: echo "PATH=$(npm bin):$PATH" >> $GITHUB_ENV
-    # END OF NEW BLOCK
+        # ADD THIS LINE: Explicitly add node_modules/.bin to PATH
+        cache: 'npm' # Recommended for faster builds
+        path: '**/node_modules' # Ensures node_modules are cached correctly
+        # The 'path' property for setup-node also handles adding .bin to PATH
+        # No need for the separate 'Set npm bin path' step
 
     - name: Install dependencies
       run: npm install # Install your React project dependencies
