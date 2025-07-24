@@ -18,20 +18,31 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20' # Use Node.js version 20 (or compatible with your React app)
+        cache: 'npm' # Cache npm dependencies for faster builds
+        # The 'path' property for setup-node ensures node_modules are cached correctly
+        # and should implicitly handle PATH for executables.
 
     - name: Install dependencies
-      run: npm install # Install your React project dependencies
+      # Add a clean install to ensure all permissions and links are fresh
+      run: npm ci # 'ci' is for clean install in CI environments, ensures fresh node_modules
+
+    - name: Verify Vite executable permissions (Diagnostic Step)
+      # This step is purely for diagnosis if the next one fails again.
+      # It tries to explicitly set permissions and then list the file.
+      run: |
+        chmod +x ./node_modules/.bin/vite
+        ls -l ./node_modules/.bin/vite
+      continue-on-error: true # Allow workflow to continue even if this fails
 
     - name: Build React application
-      run: npm run build # Run the build command (creates the 'dist' folder)
+      # Rely on npm run build, which should manage the execution context correctly
+      run: npm run build
 
     - name: Deploy to InterServer via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Use a reliable FTP deployment action
       with:
         server: ${{ secrets.FTP_HOST_FRONTEND }} # Your FTP Host for frontend
         username: ${{ secrets.FTP_USERNAME_FRONTEND }} # Your FTP Username for frontend
-        password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for frontend
+        password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for backend
         local-dir: ./dist/ # The local directory containing your built React app
-        # CORRECTED PARAMETER NAME and PATH: Changed from 'remote-dir' to 'server-dir'
-        # And set to the specific subdomain folder for the frontend
         server-dir: patients.kepekepe.com/ # The target directory on your InterServer host
