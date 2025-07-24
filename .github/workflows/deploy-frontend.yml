@@ -32,8 +32,6 @@ jobs:
         username: ${{ secrets.FTP_USERNAME_FRONTEND }} # Your FTP Username for frontend
         password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for frontend
         local-dir: ./dist/ # The local directory containing your built React app
-        # Remote path is the root of your patients.kepekepe.com subdomain
-        # You confirmed this is '/' when connecting via FileZilla to that specific subdomain.
-        remote-dir: / # The target directory on your InterServer host
-        # Optional: Delete files on remote that are not in local (be careful with this!)
-        # delete-remote: true
+        # CORRECTED PARAMETER NAME and PATH: Changed from 'remote-dir' to 'server-dir'
+        # And set to the specific subdomain folder for the frontend
+        server-dir: patients.kepekepe.com/ # The target directory on your InterServer host
