@@ -1,0 +1,39 @@
+# .github/workflows/deploy-frontend.yml
+name: Deploy React Frontend to InterServer
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # Use a fresh Ubuntu environment
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Action to check out your repository code
+
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # Use Node.js version 20 (or compatible with your React app)
+
+    - name: Install dependencies
+      run: npm install # Install your React project dependencies
+
+    - name: Build React application
+      run: npm run build # Run the build command (creates the 'dist' folder)
+
+    - name: Deploy to InterServer via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Use a reliable FTP deployment action
+      with:
+        server: ${{ secrets.FTP_HOST_FRONTEND }} # Your FTP Host for frontend
+        username: ${{ secrets.FTP_USERNAME_FRONTEND }} # Your FTP Username for frontend
+        password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for frontend
+        local-dir: ./dist/ # The local directory containing your built React app
+        # Remote path is the root of your patients.kepekepe.com subdomain
+        # You confirmed this is '/' when connecting via FileZilla to that specific subdomain.
+        remote-dir: / # The target directory on your InterServer host
+        # Optional: Delete files on remote that are not in local (be careful with this!)
+        # delete-remote: true
