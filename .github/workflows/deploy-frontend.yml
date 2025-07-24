@@ -18,17 +18,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20' # Use Node.js version 20 (or compatible with your React app)
-        # ADD THIS LINE: Explicitly add node_modules/.bin to PATH
         cache: 'npm' # Recommended for faster builds
         path: '**/node_modules' # Ensures node_modules are cached correctly
-        # The 'path' property for setup-node also handles adding .bin to PATH
-        # No need for the separate 'Set npm bin path' step
 
     - name: Install dependencies
       run: npm install # Install your React project dependencies
 
     - name: Build React application
-      run: npm run build # Run the build command (now using npx in package.json)
+      # CORRECTED COMMAND: Directly execute vite from node_modules/.bin
+      run: ./node_modules/.bin/vite build
 
     - name: Deploy to InterServer via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Use a reliable FTP deployment action
