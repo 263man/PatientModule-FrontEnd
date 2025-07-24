@@ -19,19 +19,22 @@ jobs:
       with:
         node-version: '20' # Use Node.js version 20 (or compatible with your React app)
 
+    # ADD THIS BLOCK:
+    - name: Set npm bin path
+      run: echo "PATH=$(npm bin):$PATH" >> $GITHUB_ENV
+    # END OF NEW BLOCK
+
     - name: Install dependencies
       run: npm install # Install your React project dependencies
 
     - name: Build React application
-      run: npm run build # Run the build command (creates the 'dist' folder)
+      run: npm run build # Run the build command (now using npx in package.json)
 
     - name: Deploy to InterServer via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Use a reliable FTP deployment action
       with:
         server: ${{ secrets.FTP_HOST_FRONTEND }} # Your FTP Host for frontend
         username: ${{ secrets.FTP_USERNAME_FRONTEND }} # Your FTP Username for frontend
-        password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for frontend
+        password: ${{ secrets.FTP_PASSWORD_FRONTEND }} # Your FTP Password for backend
         local-dir: ./dist/ # The local directory containing your built React app
-        # CORRECTED PARAMETER NAME and PATH: Changed from 'remote-dir' to 'server-dir'
-        # And set to the specific subdomain folder for the frontend
         server-dir: patients.kepekepe.com/ # The target directory on your InterServer host
