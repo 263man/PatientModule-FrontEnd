@@ -18,15 +18,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20' # Use Node.js version 20 (or compatible with your React app)
-        cache: 'npm' # Recommended for faster builds
-        path: '**/node_modules' # Ensures node_modules are cached correctly
+        cache: 'npm' # Cache npm dependencies for faster builds
+        # The 'path' property for setup-node ensures node_modules are cached correctly
+        # and should implicitly handle PATH for executables.
 
     - name: Install dependencies
-      run: npm install # Install your React project dependencies
+      # Add a clean install to ensure all permissions and links are fresh
+      run: npm ci # 'ci' is for clean install in CI environments, ensures fresh node_modules
+
+    - name: Verify Vite executable permissions (Diagnostic Step)
+      # This step is purely for diagnosis if the next one fails again.
+      # It tries to explicitly set permissions and then list the file.
+      run: |
+        chmod +x ./node_modules/.bin/vite
+        ls -l ./node_modules/.bin/vite
+      continue-on-error: true # Allow workflow to continue even if this fails
 
     - name: Build React application
-      # CORRECTED COMMAND: Directly execute vite from node_modules/.bin
-      run: ./node_modules/.bin/vite build
+      # Rely on npm run build, which should manage the execution context correctly
+      run: npm run build
 
     - name: Deploy to InterServer via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.0 # Use a reliable FTP deployment action
