@@ -164,33 +164,56 @@ function App() {
                 backgroundRepeat: 'no-repeat', // Prevents the image from repeating
             }}
         >
-            <header className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col sm:flex-row justify-between items-center">
-                <h1 className="text-4xl font-extrabold text-gray-800 mb-4 sm:mb-0">FHIR Patient Portal</h1>
-                <div className="flex space-x-4"> {/* Container for navigation and logout buttons */}
-                    <button
-                        onClick={() => setCurrentView('list')}
-                        className={`font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200 ease-in-out ${
-                            currentView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        }`}
-                    >
-                        Patient List
-                    </button>
-                    <button
-                        onClick={() => setCurrentView('dashboard')}
-                        className={`font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200 ease-in-out ${
-                            currentView === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        }`}
-                    >
-                        Dashboard
-                    </button>
-                    <button
-                        onClick={logout}
-                        className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200 ease-in-out"
-                    >
-                        Logout
-                    </button>
-                </div>
-            </header>
+            <header
+  className="
+    bg-white shadow-md rounded-lg p-6 mb-6
+    flex flex-col sm:flex-row justify-between items-center
+  "
+>
+  {/* Logo + Title */}
+  <div className="flex items-center space-x-2 mb-4 sm:mb-0">
+    <img
+      src="/heartech.png"
+      alt="HearTech logo"
+      className="w-8 h-8"      /* 32×32px, adjust as needed */
+    />
+    <h1 className="text-4xl font-extrabold text-gray-800">
+      FHIR Patient Portal
+    </h1>
+  </div>
+
+  {/* Navigation & Logout */}
+  <div className="flex space-x-4">
+    <button
+      onClick={() => setCurrentView('list')}
+      className={`
+        font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200
+        ${currentView === 'list'
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}
+      `}
+    >
+      Patient List
+    </button>
+    <button
+      onClick={() => setCurrentView('dashboard')}
+      className={`
+        font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200
+        ${currentView === 'dashboard'
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}
+      `}
+    >
+      Dashboard
+    </button>
+    <button
+      onClick={logout}
+      className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-200"
+    >
+      Logout
+    </button>
+  </div>
+</header>
 
             {/* Conditional Rendering of Views */}
             {currentView === 'list' && (
