@@ -199,8 +199,8 @@ function PatientDashboard() {
 
 
   // Chart Colors (can be customized)
-  const PIE_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#FF8042'];
-  const BAR_COLOR = '#8884d8';
+  const PIE_COLORS = ['#d584d8ff', '#5762daff', '#ffc658', '#FF8042'];
+  const BAR_COLOR = '#84d896ff';
 
   if (loading) {
     return (
