@@ -1,11 +1,8 @@
-# Telehealth Patient Portal (Frontend)
-
-[![React Build and Deploy](https://github.com/YourGitHubUsername/telehealth-frontend/actions/workflows/deploy-frontend.yml/badge.svg)](https://github.com/YourGitHubUsername/telehealth-frontend/actions/workflows/deploy-frontend.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# FHIR-Enabled Patient Management System (Frontend)
 
 ## Overview
 
-This repository hosts the frontend React application for the Telehealth Patient Portal. Built with Vite and styled with Tailwind CSS, this application provides a responsive and intuitive user interface for managing patient records. It interacts with a separate ASP.NET Core API backend.
+This repository hosts the frontend React application for the FHIR-Enabled Patient Management System. Built with Vite and styled with Tailwind CSS, this application provides a responsive and intuitive user interface for managing patient records. It interacts with a separate ASP.NET Core API backend.
 
 The application features:
 * **User Authentication:** Secure login functionality.
