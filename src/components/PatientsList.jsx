@@ -8,16 +8,14 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
     const [error, setError] = useState(null);
     const [exporting, setExporting] = useState(false);
 
-    // Search state
     const [searchTerm, setSearchTerm] = useState('');
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const patientsPerPage = 10;
+    const [patientsPerPage] = useState(10);
     const [totalPatients, setTotalPatients] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
 
-    // Fetch patients (paginated)
     const fetchPatientsForList = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -34,8 +32,8 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
                 throw new Error("VITE_API_BASE_URL is not defined in .env");
             }
 
-            // FIXED: Correct pagination params (page + pageSize)
-            let url = `${apiBaseUrl}/api/patients?page=${currentPage}&pageSize=${patientsPerPage}`;
+            // 🚨 FIXED: Correct query params for backend (_page, _pageSize)
+            let url = `${apiBaseUrl}/api/patients?_page=${currentPage}&_pageSize=${patientsPerPage}`;
 
             if (searchTerm.length > 0) {
                 url += `&name=${encodeURIComponent(searchTerm)}`;
@@ -43,29 +41,30 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
 
             const response = await fetch(url, {
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    throw new Error("Session expired or unauthorized. Please log in again.");
+                    setError("Session expired or unauthorized. Please log in again.");
                 }
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Error ${response.status}`);
+                const errorData = await response.json().catch(() => response.text());
+                throw new Error(errorData.message || errorData || `HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log("Fetched Patient Data:", data);
+            console.log("Fetched Patient Data (Paginated):", data);
 
-            if (!data || !Array.isArray(data.patients)) {
-                throw new Error("API did not return expected paginated format.");
+            if (data && Array.isArray(data.patients) && typeof data.totalCount === 'number') {
+                setPatients(data.patients);
+                setTotalPatients(data.totalCount);
+                setTotalPages(Math.ceil(data.totalCount / patientsPerPage));
+            } else {
+                console.error("API did not return expected paginated patient data format:", data);
+                setError("API did not return expected paginated patient data format.");
             }
-
-            setPatients(data.patients);
-            setTotalPatients(data.totalCount);
-            setTotalPages(Math.ceil(data.totalCount / patientsPerPage));
 
         } catch (err) {
             console.error("Error fetching patients:", err);
@@ -73,36 +72,35 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
         } finally {
             setLoading(false);
         }
-    }, [token, currentPage, searchTerm, refreshTrigger]);
+    }, [refreshTrigger, searchTerm, token, currentPage, patientsPerPage]);
 
-    // Load patients when dependencies change
     useEffect(() => {
         fetchPatientsForList();
     }, [fetchPatientsForList]);
 
-    // Pagination handler
     const handlePageChange = (newPage) => {
         if (newPage > 0 && newPage <= totalPages) {
             setCurrentPage(newPage);
         }
     };
 
-    // Search handler
-    const handleSearchChange = (e) => {
+    const handleSearchChange = useCallback((e) => {
         setSearchTerm(e.target.value);
-        setCurrentPage(1); // Reset to page 1 after search
-    };
+        setCurrentPage(1);
+    }, []);
 
-    // CSV Export
     const handleExportCsv = async () => {
         setExporting(true);
-
         try {
             const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-            if (!apiBaseUrl) throw new Error("VITE_API_BASE_URL missing");
+            if (!apiBaseUrl) {
+                throw new Error("VITE_API_BASE_URL is not defined in .env");
+            }
 
-            // FIXED: Correct pagination params
-            let exportUrl = `${apiBaseUrl}/api/patients?page=1&pageSize=10000`;
+            const exportPageSize = 10000;
+
+            // 🚨 FIXED HERE TOO: use _page and _pageSize
+            let exportUrl = `${apiBaseUrl}/api/patients?_page=1&_pageSize=${exportPageSize}`;
 
             if (searchTerm.length > 0) {
                 exportUrl += `&name=${encodeURIComponent(searchTerm)}`;
@@ -110,19 +108,19 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
 
             const response = await fetch(exportUrl, {
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
                 },
             });
 
             if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.message || `Error ${response.status}`);
+                const errorData = await response.json().catch(() => response.text());
+                throw new Error(errorData.message || errorData || `HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            if (!Array.isArray(data.patients)) {
-                throw new Error("Invalid export format");
+            if (!data || !Array.isArray(data.patients)) {
+                throw new Error("API did not return expected patient data for export.");
             }
 
             const headers = [
@@ -135,86 +133,104 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
                 "Birth Date"
             ];
 
-            const csvRows = data.patients.map((p) => {
-                const fhirId = p.id?.value || "";
-                const firstName = p.name?.[0]?.given?.[0]?.value || "";
-                const lastName = p.name?.[0]?.family?.value || "";
-                const email = p.telecom?.find(t => t.system?.value === "email")?.value?.value || "";
-                const phone = p.telecom?.find(t => t.system?.value === "phone")?.value?.value || "";
-                const gender = p.gender?.value || "";
-                const birthDate = p.birthDate?.value || "";
+            const csvRows = data.patients.map(patient => {
+                const fhirId = patient.id?.value || '';
+                const firstName = patient.name?.[0]?.given?.[0]?.value || '';
+                const lastName = patient.name?.[0]?.family?.value || '';
+                const email = patient.telecom?.find(t => t.system?.value === 'email')?.value?.value || '';
+                const phone = patient.telecom?.find(t => t.system?.value === 'phone')?.value?.value || '';
+                const gender = patient.gender?.value || '';
+                const birthDate = patient.birthDate?.value || '';
 
-                const escape = (v) =>
-                    ("" + v).includes(",") ? `"${("" + v).replace(/"/g, '""')}"` : v;
+                const escapeCsv = (value) => {
+                    const stringValue = String(value);
+                    return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
+                        ? `"${stringValue.replace(/"/g, '""')}"`
+                        : stringValue;
+                };
 
                 return [
-                    escape(fhirId),
-                    escape(firstName),
-                    escape(lastName),
-                    escape(email),
-                    escape(phone),
-                    escape(gender),
-                    escape(birthDate),
-                ].join(",");
+                    escapeCsv(fhirId),
+                    escapeCsv(firstName),
+                    escapeCsv(lastName),
+                    escapeCsv(email),
+                    escapeCsv(phone),
+                    escapeCsv(gender),
+                    escapeCsv(birthDate)
+                ].join(',');
             });
 
-            const csvString = [headers.join(","), ...csvRows].join("\n");
+            const csvString = [
+                headers.join(','),
+                ...csvRows
+            ].join('\n');
 
-            const blob = new Blob([csvString], { type: "text/csv" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "patients_report.csv";
-            link.click();
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'patients_report.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } else {
+                window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(csvString));
+            }
 
         } catch (err) {
-            console.error("Export error:", err);
+            console.error("Error exporting patients to CSV:", err);
             setError(`Failed to export: ${err.message}`);
         } finally {
             setExporting(false);
         }
     };
 
-    // UI States
-    if (loading) return <p className="text-center text-gray-600">Loading patients...</p>;
-    if (error) return <p className="text-center text-red-600">Error: {error}</p>;
-
-    if (patients.length === 0 && !searchTerm) {
-        return <p className="text-center text-gray-600">No patients found.</p>;
+    if (loading) {
+        return <p className="text-center text-gray-600">Loading patients...</p>;
     }
 
-    if (patients.length === 0 && searchTerm) {
-        return <p className="text-center text-gray-600">No patients found for "{searchTerm}".</p>;
+    if (error) {
+        return <p className="text-center text-red-600">Error: {error}</p>;
+    }
+
+    if (patients.length === 0 && totalPatients === 0 && !searchTerm) {
+        return <p className="text-center text-gray-600">No patients found. Add new patients to get started.</p>;
+    }
+
+    if (patients.length === 0 && totalPatients === 0 && searchTerm.length > 0) {
+        return <p className="text-center text-gray-600">No patients found matching "{searchTerm}".</p>;
     }
 
     return (
         <div className="container mx-auto p-4">
-            {/* Search Bar */}
+
             <div className="mb-4">
                 <input
                     type="text"
-                    placeholder="🔎 Search by name or email..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 text-gray-800"
+                    placeholder="🔎Search by name or email..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                     value={searchTerm}
                     onChange={handleSearchChange}
                 />
             </div>
 
-            {/* Header with CSV Export */}
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-gray-800">Patients List</h2>
                 <button
                     onClick={handleExportCsv}
                     disabled={exporting || totalPatients === 0}
-                    className="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm hover:bg-gray-100 disabled:opacity-50 text-sm"
+                    className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold py-1 px-3 rounded-md shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out text-sm"
                 >
-                    {exporting ? "Exporting..." : "Export CSV"}
+                    {exporting ? 'Exporting...' : 'Export to CSV'}
                 </button>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto">
                 <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-                    <thead className="bg-gray-200 text-gray-700 text-sm uppercase">
+                    <thead className="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
                         <tr>
                             <th className="py-3 px-6 text-left">FHIR ID</th>
                             <th className="py-3 px-6 text-left">First Name</th>
@@ -223,31 +239,25 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
                             <th className="py-3 px-6 text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="text-gray-600 text-sm">
+                    <tbody className="text-gray-600 text-sm font-light">
                         {patients.map((patient) => (
-                            <tr key={patient.id?.value}>
-                                <td className="py-3 px-6">{patient.id?.value}</td>
-                                <td className="py-3 px-6">{patient.name?.[0]?.given?.[0]?.value}</td>
-                                <td className="py-3 px-6">{patient.name?.[0]?.family?.value}</td>
-                                <td className="py-3 px-6">
-                                    {patient.telecom?.find(t => t.system?.value === "email")?.value?.value}
+                            <tr key={patient.id?.value || patient.identifier?.[0]?.value?.value || Math.random()}>
+                                <td className="py-3 px-6 text-left whitespace-nowrap">{patient.id?.value}</td>
+                                <td className="py-3 px-6 text-left">{patient.name?.[0]?.given?.[0]?.value}</td>
+                                <td className="py-3 px-6 text-left">{patient.name?.[0]?.family?.value}</td>
+                                <td className="py-3 px-6 text-left">
+                                    {patient.telecom?.find(t => t.system?.value === 'email')?.value?.value}
                                 </td>
                                 <td className="py-3 px-6 text-center space-x-2">
                                     <button
                                         onClick={() => onEditPatient(patient.id?.value)}
-                                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs"
+                                        className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md text-xs focus:outline-none"
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        onClick={() =>
-                                            onDeletePatient(
-                                                patient.id?.value,
-                                                patient.name?.[0]?.given?.[0]?.value,
-                                                patient.name?.[0]?.family?.value
-                                            )
-                                        }
-                                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+                                        onClick={() => onDeletePatient(patient.id?.value, patient.name?.[0]?.given?.[0]?.value, patient.name?.[0]?.family?.value)}
+                                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs focus:outline-none"
                                     >
                                         Delete
                                     </button>
@@ -258,28 +268,26 @@ function PatientsList({ refreshTrigger, onEditPatient, onDeletePatient, token })
                 </table>
             </div>
 
-            {/* Pagination */}
             <div className="flex justify-between items-center mt-4">
                 <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-300 rounded-md disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
                 >
                     Previous
                 </button>
-
                 <span className="text-gray-700">
-                    Page {currentPage} of {totalPages} — Total {totalPatients}
+                    Page {currentPage} of {totalPages} (Total Patients: {totalPatients})
                 </span>
-
                 <button
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-300 rounded-md disabled:opacity-50"
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
                 >
                     Next
                 </button>
             </div>
+
         </div>
     );
 }
